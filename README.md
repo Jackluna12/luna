@@ -19,5 +19,5 @@ In the era of AI-driven development (using agents like OpenClaw or Claude Code),
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/Jackluna12/luna.git](https://github.com/Jackluna12/luna.git)
-   cd luna
+git clone https://github.com/Jackluna12/luna.git
+cd luna
