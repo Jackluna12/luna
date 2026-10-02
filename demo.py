@@ -6,7 +6,7 @@ from main import LunaSummarizer
 
 # ==========================================================
 # 🚀 Luna: Demonstration Script
-# This script creates a temporary project structure to show 
+# This script creates a temporary project structure to show
 # how Luna extracts AI-ready context from a codebase.
 # ==========================================================
 
@@ -31,7 +31,7 @@ cleanup_test_dir(test_dir) # Ensure clean start
 test_dir.mkdir()
 
 # Create dummy subdirectories and files
-print("--- 1. Set up temporary demo project at '{test_project_name}' ---")
+print(f"--- 1. Set up temporary demo project at '{test_project_name}' ---")
 (test_dir / "src").mkdir()
 (test_dir / "src" / "api.py").write_text("def fetch_data(): pass\ndef save_data(): pass", encoding='utf-8')
 (test_dir / "src" / "utils.py").write_text("import time\ndef get_timestamp(): return time.time()", encoding='utf-8')
@@ -39,12 +39,12 @@ print("--- 1. Set up temporary demo project at '{test_project_name}' ---")
 (test_dir / "docs").mkdir()
 (test_dir / "docs" / "README.md").write_text("# API Documentation\nThis is a readme for the API.\nHow to install: npm install api-lib", encoding='utf-8')
 
-(test_dir / "config.yaml").write_text("settings:\n  api_key: 'secret_key_123'\n  debug: false", encoding='utf-8')
+(test_dir / "config.yaml").write_text("settings:\n  api_key: 'dummy_key_for_demo_only'\n  debug: false", encoding='utf-8')
 
 # Create files that should be ignored
 (test_dir / ".git").mkdir() # A directory to be ignored
 (test_dir / ".git" / "HEAD").write_text("ref: refs/heads/main", encoding='utf-8')
-(test_dir / ".env").write_text("DATABASE_URL=postgres://user:pass@localhost/db", encoding='utf-8') # A file to be ignored
+(test_dir / ".env").write_text("DATABASE_URL=postgresql://user:password@localhost:5432/demo", encoding='utf-8')
 
 print(f"   Structure:\n   {test_project_name}/src/api.py\n   {test_project_name}/src/utils.py\n   {test_project_name}/docs/README.md\n   {test_project_name}/config.yaml\n   (Ignored: .git, .env)")
 print("-" * 40)
