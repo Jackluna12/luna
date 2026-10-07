@@ -1,24 +1,24 @@
+"""Luna 2.0 demo: builds a fake project and shows what Luna extracts.
+
+Run:  python demo.py
+"""
+from __future__ import annotations
+
 import os
 import shutil
 import stat
+import sys
 from pathlib import Path
-from main import LunaSummarizer
 
-# ==========================================================
-# 🚀 Luna: Demonstration Script
-# This script creates a temporary project structure to show
-# how Luna extracts AI-ready context from a codebase.
-# ==========================================================
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-# 1. Setup a temporary test environment
-# This simulates a real project with diverse file types.
-test_project_name = "demo_project"
-test_dir = Path(test_project_name)
+from luna import Luna  # noqa: E402
 
-# Define a function for simple cross-platform cleanup
-def cleanup_test_dir(path):
+TEST_DIR = Path("demo_project")
+
+
+def cleanup(path: Path) -> None:
     if path.exists():
-        # Handle read-only files on some systems
         def onerror(func, p, exc_info):
             if func in (os.rmdir, os.remove):
                 os.chmod(p, stat.S_IWRITE)
@@ -27,65 +27,69 @@ def cleanup_test_dir(path):
                 raise
         shutil.rmtree(path, onerror=onerror)
 
-cleanup_test_dir(test_dir) # Ensure clean start
-test_dir.mkdir()
 
-# Create dummy subdirectories and files
-print(f"--- 1. Set up temporary demo project at '{test_project_name}' ---")
-(test_dir / "src").mkdir()
-(test_dir / "src" / "api.py").write_text("def fetch_data(): pass\ndef save_data(): pass", encoding='utf-8')
-(test_dir / "src" / "utils.py").write_text("import time\ndef get_timestamp(): return time.time()", encoding='utf-8')
+def build_fake_project() -> None:
+    cleanup(TEST_DIR)
+    (TEST_DIR / "src").mkdir(parents=True)
+    (TEST_DIR / "src" / "api.py").write_text(
+        '"""API client."""\nimport requests\n\n'
+        'API_URL = "https://example.com"\n\n'
+        'def fetch_data(endpoint):\n    """Fetch JSON from an endpoint."""\n'
+        '    return requests.get(API_URL + endpoint).json()\n\n'
+        'class Client:\n    """Thin API wrapper."""\n'
+        '    def __init__(self, key):\n        """Store the API key."""\n'
+        '        self.key = key\n\n'
+        '    def save_data(self, payload):\n        """POST payload."""\n'
+        '        return requests.post(API_URL, json=payload)\n',
+        encoding="utf-8")
+    (TEST_DIR / "src" / "app.js").write_text(
+        "import { fetchData } from './api.js';\n\n"
+        "export async function run(endpoint) {\n"
+        "  const data = await fetchData(endpoint);\n"
+        "  console.log(data);\n"
+        "}\n"
+        "export class Runner {\n"
+        "  start() { run('/v1'); }\n"
+        "}\n",
+        encoding="utf-8")
+    (TEST_DIR / "docs").mkdir()
+    (TEST_DIR / "docs" / "README.md").write_text(
+        "# Demo\n\nThis is a demo project for Luna.\n", encoding="utf-8")
+    (TEST_DIR / "config.yaml").write_text(
+        "settings:\n  debug: false\n", encoding="utf-8")
+    # Noise that Luna must ignore:
+    (TEST_DIR / ".git").mkdir()
+    (TEST_DIR / ".git" / "HEAD").write_text("ref: refs/heads/main", encoding="utf-8")
+    (TEST_DIR / "node_modules").mkdir()
+    (TEST_DIR / "node_modules" / "huge.js").write_text("x" * 10000, encoding="utf-8")
+    (TEST_DIR / ".gitignore").write_text("node_modules/\n*.log\n", encoding="utf-8")
+    (TEST_DIR / "debug.log").write_text("noise", encoding="utf-8")
 
-(test_dir / "docs").mkdir()
-(test_dir / "docs" / "README.md").write_text("# API Documentation\nThis is a readme for the API.\nHow to install: npm install api-lib", encoding='utf-8')
 
-(test_dir / "config.yaml").write_text("settings:\n  api_key: 'dummy_key_for_demo_only'\n  debug: false", encoding='utf-8')
+def main() -> None:
+    print("--- 1. building fake project ---")
+    build_fake_project()
 
-# Create files that should be ignored
-(test_dir / ".git").mkdir() # A directory to be ignored
-(test_dir / ".git" / "HEAD").write_text("ref: refs/heads/main", encoding='utf-8')
-(test_dir / ".env").write_text("DATABASE_URL=postgresql://user:password@localhost:5432/demo", encoding='utf-8')
+    print("--- 2. signatures mode (default) ---")
+    luna = Luna(root=TEST_DIR, output_format="txt")
+    stats = luna.export(TEST_DIR / "ctx_signatures.txt")
+    print(f"    {stats.files} files, ~{stats.tokens} tokens")
 
-print(f"   Structure:\n   {test_project_name}/src/api.py\n   {test_project_name}/src/utils.py\n   {test_project_name}/docs/README.md\n   {test_project_name}/config.yaml\n   (Ignored: .git, .env)")
-print("-" * 40)
+    print("--- 3. xml format + tight budget ---")
+    luna = Luna(root=TEST_DIR, output_format="xml", budget=500)
+    stats = luna.export(TEST_DIR / "ctx_small.xml")
+    print(f"    {stats.files} files, ~{stats.tokens} tokens, "
+          f"{stats.skipped} skipped over budget")
+
+    print("--- 4. preview (signatures output) ---")
+    text = (TEST_DIR / "ctx_signatures.txt").read_text(encoding="utf-8")
+    print(text[:1500])
+    print("    ...")
+
+    print("--- 5. cleanup ---")
+    cleanup(TEST_DIR)
+    print("✅ demo done")
 
 
-# 2. Instantiate Luna to scan the test project
-# This uses default settings from main.py, which include standard ignore rules.
-print("--- 2. Instantiating Luna with default settings ---")
-print(f"Scan Directory: {test_dir.absolute()}")
-# Points Luna at our temp project, so it doesn't scan the 'luna' repo itself.
-luna = LunaSummarizer(root_dir=test_project_name)
-
-# 3. Generate the context summary
-# This is the core workflow: scanning, filtering, and summarizing.
-print("--- 3. Running export_summary() ---")
-# Specify the output file path in the test directory
-output_filepath = test_dir / "luna_context.txt"
-luna.export_summary(output_file=str(output_filepath))
-
-# 4. Verify and preview results
-# Show the AI-ready context that Luna just generated.
-print("--- 4. Verifying and Previewing generated context file ---")
-if output_filepath.exists():
-    print(f"✅ Success: '{output_filepath.name}' generated in '{test_project_name}'.")
-    # Read first few lines of the output for a preview
-    try:
-        with open(output_filepath, 'r', encoding='utf-8') as f:
-            print("\nPreview of generated context (first 10 lines):")
-            print("------------------------------------------")
-            for _ in range(10):
-                line = f.readline()
-                if not line: break
-                print(line.rstrip())
-            print("------------------------------------------")
-    except Exception as e:
-        print(f"❌ Error reading context file: {e}")
-else:
-    print(f"❌ Error: '{output_filepath.name}' was not generated.")
-
-# 5. Clean up temporary test files
-# We leave the demonstration tidy, optimized for local Mac Mini environments.
-print("--- 5. Cleaning up temporary demo files ---")
-cleanup_test_dir(test_dir)
-print(f"✅ Done: Temporary directory '{test_project_name}' removed.")
+if __name__ == "__main__":
+    main()
